@@ -1,5 +1,6 @@
 const BooksModel = require("../modules/BooksModel");
 const reviewsModel = require("../modules/ReviewModel");
+const aws = require("../aws.config");
 
 const moment = require('moment')
 
@@ -14,7 +15,7 @@ const {
 } = require("../utility/validation")
 
 //====================================================[API TO CREATE BOOK]==========================================================
-const createBook = async (req, res) => {
+/*const createBook = async (req, res) => {
     try {
         const data = req.body;
 
@@ -126,6 +127,140 @@ const createBook = async (req, res) => {
         })
 
     } catch (error) {
+        return res.status(500).send({
+            status: false,
+            message: error.message
+        })
+    }
+}*/
+
+//====================================================[API TO CREATE BOOK with book cover pic]==========================================================
+const createBook = async (req, res) => {
+    try {
+        const data = req.body;
+        const files = req.files
+        // console.log( res.render('form'))
+
+        if (!isValidRequestBody(data)) return res.status(400).send({
+            status: false,
+            message: "Body Empty"
+        })
+
+        let {
+            title,
+            ISBN,
+            releasedAt,
+            category,
+            userId,
+            subcategory,
+            excerpt
+        } = data;
+
+        //Validations...
+        if (isEmpty(releasedAt)) {
+            releasedAt = moment(releasedAt).format("YYYY-MM-DD")
+        } else {
+            if (!isValidDateFormat(releasedAt)) return res.status(400).send({
+                status: false,
+                message: "Date must be in the format YYYY-MM-DD"
+            })
+
+            if (!isValidDate(releasedAt)) return res.status(400).send({
+                status: false,
+                message: "Invalid Date"
+            })
+
+        }
+
+        if (isEmpty(excerpt)) return res.status(400).send({
+            status: false,
+            message: "Excerpt is required"
+        })
+
+
+        if (isEmpty(category)) return res.status(400).send({
+            status: false,
+            message: "Category required"
+        })
+
+        if (isEmpty(userId)) return res.status(400).send({
+            status: false,
+            message: "UserId required"
+        })
+        if (!isValidObjectId(userId)) return res.status(400).send({
+            status: false,
+            message: "UserId invalid"
+        })
+
+        if (isEmpty(subcategory)) return res.status(400).send({
+            status: false,
+            message: "Subcategory required"
+        })
+
+        if (isEmpty(title)) return res.status(400).send({
+            status: false,
+            message: "Title required"
+        })
+
+
+        if (isEmpty(ISBN)) return res.status(400).send({
+            status: false,
+            message: "ISBN required"
+        })
+
+        if (!isValidISBN(ISBN)) return res.status(400).send({
+            status: false,
+            message: "Enter a valid ISBN Number"
+        })
+
+        // check file comes or not
+        if (!files || files.length == 0) return res.status(400).send({
+            status: false,
+            message: "bookCover must be required"
+        })
+
+        // DB Calls
+
+        const isTitleUnique = await BooksModel.findOne({
+            title
+        }).catch(e => null);
+        if (isTitleUnique) return res.status(400).send({
+            status: false,
+            message: "Title already exist"
+        })
+
+        const isISBNUnique = await BooksModel.findOne({
+            ISBN
+        }).catch(e => null);
+        if (isISBNUnique) return res.status(400).send({
+            status: false,
+            message: "ISBN already exist"
+        })
+
+        // upload File in s3
+        const s3Url = await aws.uploadFile(files[0])
+
+
+        //Book creation
+        const createBook = await BooksModel.create({
+            title,
+            excerpt,
+            userId,
+            ISBN,
+            category,
+            subcategory,
+            bookCover: s3Url,
+            releasedAt: moment(releasedAt).format("YYYY-MM-DD"),
+        })
+
+        return res.status(201).send({
+            status: true,
+            message: "Book created successfully",
+            data: createBook
+        })
+
+    } catch (error) {
+        console.log(error)
         return res.status(500).send({
             status: false,
             message: error.message

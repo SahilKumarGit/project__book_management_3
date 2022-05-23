@@ -1,4 +1,5 @@
 const express = require("express");
+const multer  = require('multer')
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const route = require("./routes/route.js");
@@ -9,6 +10,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
   extended: true
 }));
+app.use( multer().any())
 
 mongoose
   .connect(
